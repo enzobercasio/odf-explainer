@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>OpenShift Data Foundation, Explained</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;700;900&family=Red+Hat+Text:wght@400;500;700&family=Red+Hat+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; a wide "stage" diagram drives the story, then modes, a sizing calculator and a pre-flight list. */
+:root{
+  --paper:#EEF1F4; --panel:#FFFFFF; --ink:#13202A; --muted:#566571; --line:#CBD4DC; --faint:#E2E7EC;
+  --cobalt:#2350B5; --cobalt-soft:#DCE5F8; --coral:#CF4B32; --coral-soft:#F8DDD6; --ok:#23804F; --ok-soft:#D6EEDF; --amber:#A86A0E;
+  --f-display:"Red Hat Display",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:"Red Hat Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"Red Hat Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E151B; --panel:#151F28; --ink:#E4EAEF; --muted:#94A3AF; --line:#2B3946; --faint:#1C2833;
+  --cobalt:#7299F2; --cobalt-soft:#1D2C4A; --coral:#F07C62; --coral-soft:#43251F; --ok:#5DC48C; --ok-soft:#173326; --amber:#E0A84A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E151B; --panel:#151F28; --ink:#E4EAEF; --muted:#94A3AF; --line:#2B3946; --faint:#1C2833;
+  --cobalt:#7299F2; --cobalt-soft:#1D2C4A; --coral:#F07C62; --coral-soft:#43251F; --ok:#5DC48C; --ok-soft:#173326; --amber:#E0A84A; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 80px;display:flex;flex-direction:column;gap:72px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(2.3rem,6vw,4.2rem);font-weight:900;letter-spacing:-.02em}
+h2{font-size:clamp(1.6rem,3.4vw,2.3rem);font-weight:700;letter-spacing:-.01em}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0;max-width:65ch}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--cobalt)}
+.lede{font-size:1.15rem;color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--faint);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+section{display:flex;flex-direction:column;gap:22px}
+.head{display:flex;flex-direction:column;gap:10px}
+a{color:var(--cobalt)}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:16px}
+.hero h1 span{color:var(--cobalt)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--f-mono);font-size:.82rem;color:var(--muted)}
+.facts b{color:var(--ink);font-weight:500}
+
+/* stage */
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.stage-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--paper)}
+.seg button{border:0;background:transparent;color:var(--muted);padding:6px 14px;border-radius:999px;font-size:.88rem;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.ctrl{display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 14px;border-radius:8px;font-size:.88rem;font-weight:500}
+.btn:hover{border-color:var(--cobalt)}
+.svgbox{overflow-x:auto}
+.svgbox svg{display:block;width:100%;min-width:760px;height:auto}
+.steps{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);border-top:1px solid var(--line)}
+.steps ol{list-style:none;margin:0;padding:10px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--line)}
+.steps li button{width:100%;text-align:left;display:flex;gap:12px;align-items:baseline;border:0;background:transparent;color:var(--muted);padding:8px 10px;border-radius:8px;font-size:.93rem}
+.steps li button .n{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);min-width:1.6em}
+.steps li button[aria-current="step"]{background:var(--cobalt-soft);color:var(--ink);font-weight:500}
+.steps li button[aria-current="step"] .n{color:var(--cobalt)}
+.progress{height:2px;background:var(--faint);margin:0 10px}
+.progress i{display:block;height:100%;width:0;background:var(--cobalt)}
+.narr{padding:22px 24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.narr h3{font-size:1.3rem}
+.narr .what{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;white-space:pre-wrap;overflow-x:auto}
+@media (max-width:720px){.steps{grid-template-columns:1fr}.steps ol{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* svg styling */
+svg text{font-family:var(--f-body);fill:var(--ink)}
+svg .lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;fill:var(--muted)}
+svg .sub{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg .title{font-size:14px;font-weight:700;font-family:var(--f-display)}
+svg .box{fill:var(--panel);stroke:var(--line);stroke-width:1.2;transition:fill .35s,stroke .35s}
+svg .zone{fill:var(--paper);stroke:var(--line);stroke-dasharray:4 4}
+svg .chip{fill:var(--faint);stroke:var(--line);transition:fill .35s,stroke .35s}
+svg .disk-body{fill:var(--faint);stroke:var(--line);transition:fill .35s,stroke .35s}
+svg .disk-fill{fill:var(--coral);opacity:0;transition:opacity .4s}
+svg .guide{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:3 5}
+svg .on .box,svg .on .chip,svg .on .disk-body{fill:var(--cobalt-soft);stroke:var(--cobalt);stroke-width:1.8}
+svg .got .disk-fill{opacity:.85}
+svg .acked .disk-body{stroke:var(--ok);stroke-width:2}
+svg .opbar{fill:var(--ink)}
+svg .optext{fill:var(--paper);font-family:var(--f-mono);font-size:12px}
+svg g.on .opbar{fill:var(--cobalt)}
+svg .badge{opacity:0;transition:opacity .3s}
+svg .badge.show{opacity:1}
+svg .badge rect{fill:var(--ok)} svg .badge text{fill:var(--paper);font-family:var(--f-mono);font-size:10.5px}
+
+/* components */
+.layers{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.layer{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;padding:18px 22px;border-top:1px solid var(--line);opacity:1;transform:none}
+.layer:first-child{border-top:0}
+.layer .k{font-family:var(--f-display);font-weight:700}
+.layer .k small{display:block;font-family:var(--f-mono);font-weight:400;font-size:.75rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.layer p{color:var(--muted)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pill{font-family:var(--f-mono);font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--ink);background:var(--paper)}
+@media (max-width:640px){.layer{grid-template-columns:1fr;gap:6px}}
+@media (prefers-reduced-motion:no-preference){
+  .layer.anim{animation:rise .6s both}
+  @keyframes rise{from{opacity:.2;transform:translateY(10px)}to{opacity:1;transform:none}}
+}
+
+/* modes */
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{border:1px solid var(--line);background:var(--panel);color:var(--muted);padding:7px 14px;border-radius:8px;font-size:.9rem;font-weight:500}
+.tabs button[aria-selected="true"]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -3px 0 var(--cobalt)}
+.mode{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+.mode dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;margin:0;font-size:.93rem}
+.mode dt{font-family:var(--f-mono);font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding-top:3px}
+.mode dd{margin:0}
+.mode .info{display:flex;flex-direction:column;gap:14px;min-width:0}
+.topo{display:flex;flex-direction:column;gap:10px;min-width:0}
+.zrow{display:flex;gap:10px;flex-wrap:wrap}
+.z{flex:1 1 90px;border:1px dashed var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.z .zl{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.node{border:1px solid var(--line);border-radius:7px;background:var(--paper);padding:6px 8px;font-size:.8rem;display:flex;flex-direction:column;gap:4px}
+.node b{font-family:var(--f-mono);font-weight:500;font-size:.74rem}
+.node .tags{display:flex;flex-wrap:wrap;gap:3px}
+.tag{font-family:var(--f-mono);font-size:.66rem;padding:1px 5px;border-radius:4px;background:var(--faint);color:var(--muted)}
+.tag.osd{background:var(--coral-soft);color:var(--coral)}
+.tag.ctl{background:var(--cobalt-soft);color:var(--cobalt)}
+.ext{border:1px solid var(--amber);border-radius:10px;padding:10px;font-size:.82rem;color:var(--amber);font-family:var(--f-mono)}
+@media (prefers-reduced-motion:no-preference){.node.pop{animation:pop .45s both}@keyframes pop{from{opacity:.15;transform:scale(.92)}to{opacity:1;transform:none}}}
+@media (max-width:760px){.mode{grid-template-columns:1fr}}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.calc .in{padding:22px;display:flex;flex-direction:column;gap:18px;border-right:1px solid var(--line)}
+.calc .out{padding:22px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label,.field .fl{font-family:var(--f-mono);font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field .seg{align-self:flex-start;flex-wrap:wrap}
+.range{display:flex;align-items:center;gap:12px}
+.range input{flex:1;accent-color:var(--cobalt)}
+.range output{font-family:var(--f-mono);min-width:2ch;text-align:right}
+.chk{display:flex;gap:10px;align-items:center;font-size:.93rem}
+.chk input{accent-color:var(--cobalt);width:18px;height:18px}
+.nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.num{display:flex;flex-direction:column;gap:2px}
+.num .v{font-family:var(--f-display);font-weight:900;font-size:clamp(1.6rem,3.5vw,2.3rem);font-variant-numeric:tabular-nums;line-height:1}
+.num .u{font-family:var(--f-mono);font-size:.76rem;color:var(--muted)}
+.pernode{font-size:.88rem;color:var(--muted)}
+.cap{display:flex;flex-direction:column;gap:10px}
+.bar{position:relative;height:30px;border-radius:6px;background:var(--faint);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar .raw{background:var(--line);width:100%}
+.bar .usable{background:var(--cobalt)}
+.bar .safe{background:var(--ok)}
+.mark{position:absolute;top:0;bottom:0;width:2px;background:var(--amber)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.84rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:var(--c);vertical-align:-1px}
+.note{font-size:.84rem;color:var(--muted);border-left:3px solid var(--amber);padding-left:12px}
+@media (max-width:760px){.calc{grid-template-columns:1fr}.calc .in{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* table */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:620px}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+thead th{border-top:0;font-family:var(--f-mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-family:var(--f-mono)}
+
+/* checklist */
+.check{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px}
+.check label{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:.94rem;cursor:pointer}
+.check input{accent-color:var(--ok);width:18px;height:18px;flex:none;margin-top:3px}
+.check label span{min-width:0}
+.check label small{display:block;color:var(--muted);font-size:.84rem}
+.check input:checked + span{color:var(--muted)}
+.check input:checked + span b{text-decoration:line-through}
+.tally{font-family:var(--f-mono);font-size:.85rem;color:var(--muted)}
+@media (max-width:700px){.check{grid-template-columns:1fr}}
+.src{font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Red Hat OpenShift Data Foundation · ODF 4.18</div>
+  <h1>One storage layer for <span>block, file and object</span>, running inside OpenShift.</h1>
+  <p class="lede">ODF packages Ceph, Rook and the Multicloud Object Gateway as operators. Your apps ask for storage with an ordinary PVC or bucket claim. Ceph stores three copies of every write, each in a different failure domain.</p>
+  <div class="facts"><span><b>Ceph</b> distributed storage</span><span><b>Rook</b> operator</span><span><b>NooBaa</b> object gateway</span><span><b>Ceph-CSI</b> drivers</span><span><b>3×</b> replication by default</span></div>
+</header>
+
+<section aria-labelledby="h-flow">
+  <div class="head">
+    <div class="eyebrow">How it works</div>
+    <h2 id="h-flow">The life of a write</h2>
+    <p>Pick a storage type and follow the request from the pod to three disks. The steps play on their own, or you can click any step.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-bar">
+      <div class="seg" role="group" aria-label="Storage type">
+        <button type="button" id="lane-block" data-lane="block" aria-pressed="true">Block · RBD</button>
+        <button type="button" id="lane-file" data-lane="file" aria-pressed="false">File · CephFS</button>
+        <button type="button" id="lane-object" data-lane="object" aria-pressed="false">Object · MCG</button>
+      </div>
+      <div class="ctrl">
+        <button type="button" class="btn" id="prev" aria-label="Previous step">←</button>
+        <button type="button" class="btn" id="play">Pause</button>
+        <button type="button" class="btn" id="next" aria-label="Next step">→</button>
+      </div>
+    </div>
+
+    <div class="svgbox">
+    <svg id="stage" viewBox="0 0 1000 470" role="img" aria-label="Diagram: workloads on the left, storage classes in the middle, and a Ceph cluster spread across three zones on the right">
+      <text class="lbl" x="30" y="34">WORKLOADS</text>
+      <text class="lbl" x="290" y="34">STORAGE CLASS · CSI</text>
+      <text class="lbl" x="565" y="34">CEPH CLUSTER · 3 FAILURE DOMAINS</text>
+
+      <g id="guides"></g>
+
+      <g id="app0"><rect class="box" x="30" y="60" width="190" height="64" rx="10"/><text class="title" x="46" y="88">postgres-0</text><text class="sub" x="46" y="108">PVC · 50Gi · RWO</text></g>
+      <g id="app1"><rect class="box" x="30" y="170" width="190" height="64" rx="10"/><text class="title" x="46" y="198">image-registry</text><text class="sub" x="46" y="218">PVC · 200Gi · RWX</text></g>
+      <g id="app2"><rect class="box" x="30" y="280" width="190" height="64" rx="10"/><text class="title" x="46" y="308">model-training</text><text class="sub" x="46" y="328">OBC · S3 bucket</text></g>
+
+      <g id="sc0"><rect class="box" x="290" y="60" width="220" height="64" rx="10"/><text class="title" x="306" y="88">…ceph-rbd</text><text class="sub" x="306" y="108">block · ReadWriteOnce</text></g>
+      <g id="sc1"><rect class="box" x="290" y="170" width="220" height="64" rx="10"/><text class="title" x="306" y="198">…cephfs</text><text class="sub" x="306" y="218">file · ReadWriteMany</text></g>
+      <g id="sc2"><rect class="box" x="290" y="280" width="220" height="64" rx="10"/><text class="title" x="306" y="308">openshift-storage.noobaa.io</text><text class="sub" x="306" y="328">object · S3 API</text></g>
+
+      <g id="zones"></g>
+
+      <g id="ops"><rect class="opbar" x="30" y="428" width="940" height="32" rx="8"/><text class="optext" x="48" y="449">odf-operator → ocs-operator → rook-ceph-operator · mcg-operator · ceph-csi   reconcile everything above</text></g>
+
+      <g id="b-bound" class="badge"><rect x="400" y="132" width="110" height="20" rx="4"/><text x="410" y="146">PV bound ✓</text></g>
+      <g id="b-ack" class="badge"><rect x="110" y="132" width="110" height="20" rx="4"/><text x="120" y="146">write acked ✓</text></g>
+
+      <g id="packets"></g>
+    </svg>
+    </div>
+
+    <div class="progress"><i id="prog"></i></div>
+    <div class="steps">
+      <ol id="steplist"></ol>
+      <div class="narr" aria-live="polite">
+        <div class="eyebrow" id="n-eb">Step 1 of 6</div>
+        <h3 id="n-h"></h3>
+        <p id="n-p"></p>
+        <div class="what" id="n-w"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-stack">
+  <div class="head">
+    <div class="eyebrow">What gets installed</div>
+    <h2 id="h-stack">The stack, from the bottom up</h2>
+    <p>You install one operator from OperatorHub, the ODF operator. It installs and manages everything else in the <code>openshift-storage</code> namespace.</p>
+  </div>
+  <div class="layers" id="layers">
+    <div class="layer"><div class="k">Ceph (RADOS)<small>the storage engine</small></div><div><p>Pools data across many disks and keeps it replicated and self-healing. Clients compute where data lives with the CRUSH algorithm, so no central lookup sits on the data path.</p><div class="pills"><span class="pill">MON × 3 · cluster map</span><span class="pill">MGR · metrics</span><span class="pill">OSD · one per disk</span><span class="pill">MDS · CephFS metadata</span><span class="pill">RGW · S3 (on-prem)</span></div></div></div>
+    <div class="layer"><div class="k">Rook<small>Ceph operator</small></div><div><p>Deploys Ceph daemons as pods, replaces failed OSDs, and handles upgrades. It turns a <code>StorageCluster</code> custom resource into a running Ceph cluster.</p></div></div>
+    <div class="layer"><div class="k">Ceph-CSI<small>Kubernetes drivers</small></div><div><p>Provisions, attaches, resizes, snapshots and clones volumes when a PVC asks for one of the ODF storage classes. CSI-Addons adds reclaim-space, key rotation and volume replication for DR.</p><div class="pills"><span class="pill">ocs-storagecluster-ceph-rbd</span><span class="pill">ocs-storagecluster-cephfs</span><span class="pill">…-ceph-rbd-virtualization</span></div></div></div>
+    <div class="layer"><div class="k">Multicloud Object Gateway<small>NooBaa</small></div><div><p>An S3 endpoint that can store buckets on Ceph, AWS S3, Azure Blob, GCS or other S3-compatible stores. It adds mirroring, namespace buckets and caching across them. Apps request buckets with an <code>ObjectBucketClaim</code>.</p></div></div>
+    <div class="layer"><div class="k">ODF operator + console<small>the front door</small></div><div><p>Ties it all together with the Data Foundation pages in the OpenShift console: capacity, health, alerts and the create-StorageSystem wizard.</p></div></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-modes">
+  <div class="head">
+    <div class="eyebrow">Deployment modes</div>
+    <h2 id="h-modes">Where the Ceph cluster lives</h2>
+    <p>Choose a mode before you size anything. The mode decides which nodes run storage, which disks you need and how much CPU and memory ODF takes.</p>
+  </div>
+  <div class="tabs" role="tablist" id="modetabs"></div>
+  <div class="mode" role="tabpanel" id="modepanel" aria-live="polite">
+    <div class="info">
+      <h3 id="m-h"></h3>
+      <p id="m-p"></p>
+      <dl id="m-dl"></dl>
+    </div>
+    <div class="topo" id="m-topo"></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-req">
+  <div class="head">
+    <div class="eyebrow">Requirements</div>
+    <h2 id="h-req">Size your internal-mode cluster</h2>
+    <p>These figures are what ODF's own services need, taken from the ODF 4.18 planning guide. OpenShift and your workloads need their own capacity on top of this.</p>
+  </div>
+  <div class="calc">
+    <div class="in">
+      <div class="field"><span class="fl">Performance profile</span>
+        <div class="seg" role="group" aria-label="Performance profile" id="prof">
+          <button type="button" id="p-lean" data-p="lean" aria-pressed="false">Lean</button>
+          <button type="button" id="p-bal" data-p="balanced" aria-pressed="true">Balanced</button>
+          <button type="button" id="p-perf" data-p="performance" aria-pressed="false">Performance</button>
+        </div>
+      </div>
+      <div class="field"><label for="sets">Additional device sets (3 disks each)</label>
+        <div class="range"><input type="range" id="sets" min="0" max="6" value="0"><output id="sets-o" for="sets">0</output></div>
+      </div>
+      <div class="field"><span class="fl">Disk size per OSD</span>
+        <div class="seg" role="group" aria-label="Disk size" id="dsize">
+          <button type="button" id="d-05" data-d="0.5" aria-pressed="false">0.5 TiB</button>
+          <button type="button" id="d-2" data-d="2" aria-pressed="true">2 TiB</button>
+          <button type="button" id="d-4" data-d="4" aria-pressed="false">4 TiB</button>
+        </div>
+      </div>
+      <label class="chk" for="nfs"><input type="checkbox" id="nfs"> Enable the NFS service (+3 CPU, +8 GiB)</label>
+      <p class="note" id="calc-note">Balanced is the default profile. Lean suits clusters short on resources; Performance trades more CPU and memory for throughput.</p>
+    </div>
+    <div class="out">
+      <div class="nums">
+        <div class="num"><span class="v" id="o-cpu">30</span><span class="u">logical CPUs</span></div>
+        <div class="num"><span class="v" id="o-mem">72</span><span class="u">GiB memory</span></div>
+        <div class="num"><span class="v" id="o-dev">3</span><span class="u">storage devices</span></div>
+      </div>
+      <p class="pernode" id="o-per">About 10 CPUs and 24 GiB per storage node across 3 nodes, one per failure domain.</p>
+      <div class="cap">
+        <div class="eyebrow">Capacity with 3× replication</div>
+        <div class="bar" aria-hidden="true"><i class="raw"></i><i class="usable" id="b-use"></i><i class="safe" id="b-safe"></i><span class="mark" id="b-mark"></span></div>
+        <div class="legend"><span style="--c:var(--line)" id="l-raw">Raw 6 TiB</span><span style="--c:var(--cobalt)" id="l-use">Usable 2 TiB</span><span style="--c:var(--ok)" id="l-safe">Plan to fill 1.5 TiB</span></div>
+        <p class="pernode">Usable space is raw ÷ 3. ODF raises a near-full alert at 75% and makes the cluster read-only at 85%, so plan around the green figure.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Deployment</th><th>CPU (logical)</th><th>Memory</th><th>Devices</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Internal · base services</td><td class="mono">30</td><td class="mono">72 GiB</td><td class="mono">3</td><td>Standard deployment, Balanced profile</td></tr>
+        <tr><td>Internal · each extra device set</td><td class="mono">+6</td><td class="mono">+15 GiB</td><td class="mono">+3</td><td>Scale in multiples of three, one per failure domain</td></tr>
+        <tr><td>Internal · minimum (Lean)</td><td class="mono">24</td><td class="mono">72 GiB</td><td class="mono">3</td><td>Convert to standard before adding device sets</td></tr>
+        <tr><td>Performance profile</td><td class="mono">45</td><td class="mono">96 GiB</td><td class="mono">3</td><td>Highest throughput</td></tr>
+        <tr><td>Compact (3 bare-metal masters)</td><td class="mono">24</td><td class="mono">72 GiB</td><td class="mono">3</td><td>Extra device set: +6 CPU, +15 GiB</td></tr>
+        <tr><td>External (RHCS elsewhere)</td><td class="mono">4</td><td class="mono">16 GiB</td><td class="n">n/a</td><td>Only clients and MCG run in OpenShift</td></tr>
+        <tr><td>MCG only</td><td class="mono">2.5</td><td class="mono">10 GiB</td><td class="n">n/a</td><td>Core 1/4 GiB · DB 0.5/4 GiB · endpoint 1/2 GiB</td></tr>
+        <tr><td>IBM Power · internal</td><td class="mono">48</td><td class="mono">192 GiB</td><td class="mono">3</td><td>16 CPU and 64 GB per node</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Platform</th><th>Internal</th><th>External</th><th>Disks come from</th></tr></thead>
+      <tbody>
+        <tr><td>Bare metal</td><td class="y">yes</td><td class="y">yes</td><td>Local SSD/NVMe via Local Storage Operator</td></tr>
+        <tr><td>VMware vSphere 7.0+ (8.0+ recommended)</td><td class="y">yes</td><td class="y">yes</td><td>vSAN/VMFS volumes, or VMDK/RDM/DirectPath via LSO</td></tr>
+        <tr><td>AWS</td><td class="y">yes</td><td class="n">no</td><td>EBS, <code>gp3-csi</code> recommended</td></tr>
+        <tr><td>Microsoft Azure</td><td class="y">yes</td><td class="n">no</td><td>azure-disk</td></tr>
+        <tr><td>Google Cloud</td><td class="y">yes</td><td class="n">no</td><td>gce-pd</td></tr>
+        <tr><td>ROSA with hosted control planes</td><td class="y">yes</td><td class="n">no</td><td>EBS <code>gp3-csi</code></td></tr>
+        <tr><td>IBM Power · IBM Z / LinuxONE</td><td class="y">yes</td><td class="y">yes</td><td>Local SSD via LSO</td></tr>
+        <tr><td>Red Hat OpenStack (Tech Preview)</td><td class="y">yes</td><td class="y">yes</td><td>Cinder</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="h-pre">
+  <div class="head">
+    <div class="eyebrow">Before you install</div>
+    <h2 id="h-pre">Pre-flight checklist</h2>
+    <p>Tick items off as you confirm them. Your ticks stay in this browser only.</p>
+    <span class="tally" id="tally">0 of 12 confirmed</span>
+  </div>
+  <div class="check" id="check"></div>
+</section>
+
+<footer class="src">
+  <div class="eyebrow">Sources</div>
+  <p>Figures from the Red Hat OpenShift Data Foundation 4.18 <a href="https://docs.redhat.com/ko/documentation/red_hat_openshift_data_foundation/4.18/html/planning_your_deployment/resource-requirements_rhodf" target="_blank" rel="noopener">resource requirements</a> and <a href="https://docs.redhat.com/ko/documentation/red_hat_openshift_data_foundation/4.18/html/planning_your_deployment/infrastructure-requirements_rhodf" target="_blank" rel="noopener">infrastructure requirements</a> pages. Requirements change between releases, so check the planning guide for your exact ODF version, and use the Red Hat ODF Sizing Tool for production designs.</p>
+</footer>
+</div>
+
+<script>
+(function(){
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
+
+/* ---------- build zones ---------- */
+const ZX=[565,710,855], CX=ZX.map(x=>x+65), APPY=[92,202,312];
+const zones=$('zones');
+const svc=['mgr','mds','noobaa'];
+ZX.forEach((x,i)=>{
+  const g=el('g',{id:'zone'+i},zones);
+  el('rect',{class:'zone',x,y:48,width:130,height:366,rx:12},g);
+  const t=el('text',{class:'lbl',x:x+12,y:70},g); t.textContent='ZONE-'+'ABC'[i];
+  const t2=el('text',{class:'sub',x:x+12,y:86},g); t2.textContent='worker-'+(i+1);
+  const m=el('g',{id:'mon'+i},g); el('rect',{class:'chip',x:x+12,y:96,width:106,height:26,rx:6},m);
+  const mt=el('text',{x:x+24,y:114,'font-size':12},m); mt.textContent='mon.'+'abc'[i];
+  const s=el('g',{id:'svc'+i},g); el('rect',{class:'chip',x:x+12,y:130,width:106,height:26,rx:6},s);
+  const st=el('text',{x:x+24,y:148,'font-size':12},s); st.textContent=svc[i];
+  const d=el('g',{id:'osd'+i},g);
+  const cx=CX[i];
+  el('path',{class:'disk-body',d:`M${cx-40},215 v80 a40,10 0 0 0 80,0 v-80`},d);
+  el('rect',{class:'disk-fill',x:cx-40,y:262,width:80,height:33},d);
+  el('ellipse',{class:'disk-body',cx,cy:215,rx:40,ry:10},d);
+  const ot=el('text',{x:cx,y:255,'text-anchor':'middle','font-size':12,'font-family':'var(--f-mono)'},d); ot.textContent='osd.'+i;
+  const dt=el('text',{class:'sub',x:cx,y:330,'text-anchor':'middle'},g); dt.textContent='/dev/nvme0n1';
+});
+
+/* ---------- paths ---------- */
+const P={};
+function claim(i){return `M220,${APPY[i]} L290,${APPY[i]}`}
+function toOsd(i,o){const c=APPY[i],x=CX[o]-40;return `M510,${c} C${x-60},${c} ${x-60},250 ${x},250`}
+function repl(a,b){const dy=Math.abs(a-b)===2?395:362;return `M${CX[a]},305 Q${(CX[a]+CX[b])/2},${dy} ${CX[b]},305`}
+function mapTo(i){const c=APPY[i];return `M${ZX[0]+12},109 C540,109 540,${c} 510,${c}`}
+function ack(i,o){const c=APPY[i],x=CX[o]-40;return `M${x},250 C${x-60},250 ${x-60},${c} 510,${c} L220,${c}`}
+const guides=$('guides');
+[0,1,2].forEach(i=>el('path',{class:'guide',d:claim(i)},guides));
+el('path',{class:'guide',d:toOsd(0,0)},guides);el('path',{class:'guide',d:toOsd(1,1)},guides);
+el('path',{class:'guide',d:`M510,312 C700,312 760,143 ${ZX[2]+12},143`},guides);
+el('path',{class:'guide',d:repl(0,1)},guides);el('path',{class:'guide',d:repl(1,2)},guides);el('path',{class:'guide',d:repl(0,2)},guides);
+
+/* ---------- lanes ---------- */
+const LANES={
+ block:{app:0,sc:0,pri:0,steps:[
+  {h:'The app claims storage',p:'A pod mounts a PersistentVolumeClaim that names the RBD storage class. Nothing about Ceph appears in the app manifest.',w:'kind: PersistentVolumeClaim\nspec:\n  storageClassName: ocs-storagecluster-ceph-rbd\n  accessModes: [ReadWriteOnce]\n  resources: {requests: {storage: 50Gi}}',on:['app0'],pk:[[claim(0),'c']]},
+  {h:'Ceph-CSI provisions a volume',p:'The RBD CSI provisioner creates a thin-provisioned RBD image in the replicated pool and binds a PersistentVolume to the claim.',w:'rbd image  csi-vol-7f3c…  pool: ocs-storagecluster-cephblockpool\nPV pvc-91ab…  Bound',on:['sc0','ops'],badge:'b-bound'},
+  {h:'Kubelet maps and mounts it',p:'On the node running the pod, the CSI node plugin maps the image as a block device, formats it (ext4 by default) and mounts it into the container. It gets the cluster map from the monitors.',w:'/dev/rbd0  →  /var/lib/postgresql/data',on:['mon0','mon1','mon2','sc0'],pk:[[mapTo(0),'c',true]]},
+  {h:'The client writes to the primary OSD',p:'The client runs CRUSH against the cluster map to find which OSD owns the object. It writes straight to that primary OSD. No gateway or controller sits in between.',w:'object rbd_data.7f3c…0004  →  PG 2.1a  →  [osd.0, osd.1, osd.2]',on:['osd0'],pk:[[toOsd(0,0),'c']],got:[0]},
+  {h:'The primary replicates across zones',p:'osd.0 forwards the write to two replica OSDs. CRUSH places them in different failure domains, so losing a whole zone loses no data.',w:'replica size 3 · min_size 2 · failure domain: zone',on:['osd1','osd2'],pk:[[repl(0,1),'r'],[repl(0,2),'r']],got:[0,1,2]},
+  {h:'Acknowledged after all three copies',p:'The client gets its acknowledgement only after every replica has persisted the write. If a disk fails later, Ceph rebuilds the missing copy from the survivors on its own.',w:'HEALTH_OK · 3/3 copies · write latency ≈ the slowest replica',on:['app0'],pk:[[ack(0,0),'g']],got:[0,1,2],acked:true,badge:'b-ack'}
+ ]},
+ file:{app:1,sc:1,pri:1,steps:[
+  {h:'The app claims a shared filesystem',p:'Many pods on many nodes can mount a CephFS volume at the same time. That makes it a good fit for registries, CI caches and shared content.',w:'storageClassName: ocs-storagecluster-cephfs\naccessModes: [ReadWriteMany]',on:['app1'],pk:[[claim(1),'c']]},
+  {h:'Ceph-CSI creates a subvolume',p:'The CephFS provisioner creates a subvolume with a quota inside the shared filesystem and binds a PV to the claim.',w:'subvolume csi-vol-a21e…  group: csi  quota: 200Gi',on:['sc1','ops'],badge:'b-bound'},
+  {h:'The MDS handles metadata',p:'The metadata server owns file names, directories and permissions. Clients ask the MDS where a file lives, then talk to OSDs directly for the data.',w:'mds.ocs-storagecluster-cephfilesystem-a  active\nmds.…-b  standby-replay',on:['svc1','mon0','mon1','mon2'],pk:[[`M${ZX[1]+12},143 C560,143 560,202 510,202`,'c',true]]},
+  {h:'File data lands on an OSD',p:'File contents are striped into RADOS objects in the data pool. This time CRUSH picks osd.1 as primary.',w:'cephfs data pool  →  PG 4.3c  →  [osd.1, osd.2, osd.0]',on:['osd1'],pk:[[toOsd(1,1),'c']],got:[1]},
+  {h:'Replicated to the other zones',p:'Same rule as block: three copies in three failure domains.',w:'replica size 3 · failure domain: zone',on:['osd0','osd2'],pk:[[repl(1,0),'r'],[repl(1,2),'r']],got:[0,1,2]},
+  {h:'Every mounting pod sees the change',p:'Once the write is acknowledged, every pod mounting the volume sees the same file, whichever node it runs on.',w:'mounted on 3 nodes · consistent POSIX view',on:['app1'],pk:[[ack(1,1),'g']],got:[0,1,2],acked:true,badge:'b-ack'}
+ ]},
+ object:{app:2,sc:2,pri:2,steps:[
+  {h:'The app claims a bucket',p:'An ObjectBucketClaim asks for an S3 bucket. ODF returns a ConfigMap with the endpoint and a Secret with the keys, ready to mount into the pod.',w:'kind: ObjectBucketClaim\nspec:\n  generateBucketName: training-data\n  storageClassName: openshift-storage.noobaa.io',on:['app2'],pk:[[claim(2),'c']]},
+  {h:'MCG creates the bucket',p:'The Multicloud Object Gateway creates the bucket against a backing store. The backing store can be Ceph, a public cloud or another S3 endpoint.',w:'bucket training-data-4f1…  backingstore: noobaa-default-backing-store',on:['sc2','ops'],badge:'b-bound'},
+  {h:'S3 PUT to the NooBaa endpoint',p:'The app talks plain S3 to the gateway, which scales its endpoint pods with load. On bare metal and vSphere, Ceph RGW can serve S3 directly as well.',w:'PUT s3://training-data-4f1…/shard-0042.parquet',on:['svc2'],pk:[[`M510,312 C700,312 760,143 ${ZX[2]+12},143`,'c']]},
+  {h:'Chunks are stored on Ceph',p:'MCG deduplicates, compresses and encrypts the object, then writes its chunks to the backing store. Here that is the Ceph cluster, with osd.2 as primary.',w:'dedupe ✓ compress ✓ encrypt ✓  →  osd.2',on:['osd2'],pk:[[`M${CX[2]},156 L${CX[2]},205`,'c']],got:[2]},
+  {h:'Replicated to the other zones',p:'Ceph keeps three copies of each chunk. MCG can also mirror the bucket to a second backing store in another cloud.',w:'replica size 3 · optional mirror: aws-s3 backingstore',on:['osd0','osd1'],pk:[[repl(2,1),'r'],[repl(2,0),'r']],got:[0,1,2]},
+  {h:'200 OK back to the client',p:'The S3 response returns once the data is safely stored. The app never needs to know where the bytes physically live.',w:'HTTP/1.1 200 OK  ETag: "9b2c…"',on:['app2'],pk:[[`M${CX[2]},205 L${CX[2]},156 L${ZX[2]+12},143 C760,143 700,312 510,312 L220,312`,'g']],got:[0,1,2],acked:true,badge:'b-ack'}
+ ]}
+};
+
+/* ---------- player ---------- */
+let lane='block', step=0, playing=!reduce, t0=0, raf=0, active=[];
+const DUR=3200;
+const colors={c:'var(--cobalt)',r:'var(--coral)',g:'var(--ok)'};
+const pk=$('packets'), list=$('steplist');
+function buildList(){
+  list.innerHTML='';
+  LANES[lane].steps.forEach((s,i)=>{
+    const li=document.createElement('li');const b=document.createElement('button');b.type='button';b.id='st-'+i;
+    b.innerHTML=`<span class="n">0${i+1}</span><span>${s.h}</span>`;
+    b.onclick=()=>{go(i);};li.appendChild(b);list.appendChild(li);
+  });
+}
+function clear(){
+  document.querySelectorAll('#stage .on').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('#stage .got,#stage .acked').forEach(e=>e.classList.remove('got','acked'));
+  document.querySelectorAll('#stage .badge').forEach(e=>e.classList.remove('show'));
+  pk.innerHTML='';active=[];
+}
+function go(i){
+  const S=LANES[lane].steps;step=(i+S.length)%S.length;const s=S[step];
+  clear();
+  (s.on||[]).forEach(id=>$(id)&&$(id).classList.add('on'));
+  (s.got||[]).forEach(o=>$('osd'+o).classList.add('got'));
+  if(s.acked)[0,1,2].forEach(o=>$('osd'+o).classList.add('acked'));
+  if(s.badge)$(s.badge).classList.add('show');
+  (s.pk||[]).forEach(([d,c,multi])=>{
+    const path=el('path',{d,fill:'none',stroke:colors[c],'stroke-width':2,'stroke-opacity':.35},pk);
+    const n=multi?3:1;const dots=[];
+    for(let k=0;k<n;k++)dots.push(el('circle',{r:7,fill:colors[c]},pk));
+    active.push({path,len:path.getTotalLength(),dots});
+  });
+  [...list.querySelectorAll('button')].forEach((b,k)=>b.toggleAttribute('aria-current',k===step)||b.setAttribute('aria-current',k===step?'step':'false'));
+  [...list.querySelectorAll('button')].forEach((b,k)=>{if(k===step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current')});
+  $('n-eb').textContent=`Step ${step+1} of ${S.length}`;$('n-h').textContent=s.h;$('n-p').textContent=s.p;$('n-w').textContent=s.w;
+  t0=performance.now();
+  if(reduce||!playing)drawAt(1);
+}
+function drawAt(f){
+  active.forEach(a=>a.dots.forEach((d,k)=>{
+    const ff=Math.min(1,Math.max(0,f*1.15-k*.08));const e=1-Math.pow(1-ff,3);
+    const p=a.path.getPointAtLength(a.len*e);d.setAttribute('cx',p.x);d.setAttribute('cy',p.y);
+  }));
+}
+function loop(now){
+  const f=(now-t0)/DUR;
+  drawAt(Math.min(1,f/0.55));
+  $('prog').style.width=Math.min(100,f*100)+'%';
+  if(playing&&f>=1)go(step+1);
+  raf=requestAnimationFrame(loop);
+}
+function setLane(l){lane=l;document.querySelectorAll('[data-lane]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lane===l));buildList();go(0)}
+document.querySelectorAll('[data-lane]').forEach(b=>b.onclick=()=>setLane(b.dataset.lane));
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play';t0=performance.now();if(!playing){drawAt(1);$('prog').style.width='0%'}};
+$('next').onclick=()=>go(step+1);$('prev').onclick=()=>go(step-1);
+$('play').textContent=playing?'Pause':'Play';
+buildList();go(0);
+if(!reduce)raf=requestAnimationFrame(loop);
+// pause when off-screen
+if('IntersectionObserver' in window){new IntersectionObserver(es=>{es.forEach(e=>{if(!e.isIntersecting&&playing){playing=false;$('play').textContent='Play';drawAt(1);}})},{threshold:0}).observe($('stage'))}
+
+/* ---------- stack reveal ---------- */
+if(!reduce&&'IntersectionObserver' in window){
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){[...e.target.children].forEach((c,i)=>{c.style.animationDelay=(i*90)+'ms';c.classList.add('anim')});io.disconnect()}}),{threshold:.2});
+  io.observe($('layers'));
+}
+
+/* ---------- modes ---------- */
+const N=(name,tags)=>({name,tags});
+const MODES=[
+ {id:'internal',t:'Internal',h:'Internal, dynamic disks',p:'Ceph runs on your OpenShift worker nodes. ODF requests its OSD disks from the platform\'s own storage class, such as EBS, Azure Disk or a vSphere datastore.',
+  dl:[['Nodes','3 or more workers labelled for storage, one per zone or rack'],['Disks','Requested by ODF: one per OSD, sized at install'],['ODF needs','30 CPU / 72 GiB (Balanced)'],['Best for','Cloud and vSphere clusters']],
+  z:[['zone-a',[N('worker-1',['mon','osd','mgr'])]],['zone-b',[N('worker-2',['mon','osd','mds'])]],['zone-c',[N('worker-3',['mon','osd','noobaa'])]]]},
+ {id:'attached',t:'Internal-attached',h:'Internal, local disks',p:'Ceph runs on workers and consumes disks already attached to them. The Local Storage Operator discovers the disks and turns them into PVs for the OSDs.',
+  dl:[['Nodes','3 or more workers, one per failure domain'],['Disks','Raw SSD or NVMe, no partitions or filesystem, same size on every node'],['Also install','Local Storage Operator'],['Best for','Bare metal, IBM Power, IBM Z']],
+  z:[['rack-1',[N('worker-1',['mon','osd ×4','mgr'])]],['rack-2',[N('worker-2',['mon','osd ×4','mds'])]],['rack-3',[N('worker-3',['mon','osd ×4','noobaa'])]]]},
+ {id:'compact',t:'Compact',h:'Compact, three nodes total',p:'Three bare-metal nodes run the control plane, your apps and Ceph together. This suits edge sites and small clusters.',
+  dl:[['Nodes','Exactly 3 bare-metal masters that also schedule workloads'],['ODF needs','24 CPU / 72 GiB, plus 6 CPU / 15 GiB per extra device set'],['Disks','Local, via LSO'],['Watch','Control plane, apps and storage share the same CPU']],
+  z:[['node-1',[N('master-1',['control plane','mon','osd'])]],['node-2',[N('master-2',['control plane','mon','osd'])]],['node-3',[N('master-3',['control plane','mon','osd'])]]]},
+ {id:'external',t:'External',h:'External Red Hat Ceph Storage',p:'An existing Red Hat Ceph Storage cluster outside OpenShift holds the data. ODF installs only the CSI drivers and MCG and connects with a script-generated JSON file.',
+  dl:[['ODF needs','4 CPU / 16 GiB in OpenShift'],['You need','A supported RHCS cluster and network access to its MONs, OSDs and RGW'],['Subscription','ODF Advanced'],['Best for','Large shared Ceph clusters, many OpenShift clusters on one Ceph']],
+  z:[['openshift',[N('any worker',['csi plugins','noobaa'])]]],ext:'Red Hat Ceph Storage cluster (outside OpenShift) · MON · OSD · RGW · MDS'},
+ {id:'stretch',t:'Stretch / arbiter',h:'Stretch cluster with an arbiter',p:'One OpenShift cluster spans two data centres, with a tie-breaker monitor in a third location. Data is written synchronously to both sites, so either site can fail without data loss.',
+  dl:[['Nodes','At least 4 storage nodes (2 per data zone) plus an arbiter zone with a master'],['Replication','4 copies, 2 in each data zone'],['Latency','Low latency between data zones (about 10 ms RTT or less); the arbiter can be farther away'],['Subscription','ODF Advanced']],
+  z:[['data-zone-1',[N('worker-1',['mon','osd']),N('worker-2',['mon','osd'])]],['arbiter',[N('master-3',['mon (arbiter)'])]],['data-zone-2',[N('worker-3',['mon','osd']),N('worker-4',['mon','osd'])]]]},
+ {id:'mcg',t:'MCG only',h:'Multicloud Object Gateway only',p:'Deploy just the object gateway, with no Ceph. Buckets live in AWS, Azure, GCS or any S3 store, behind one S3 endpoint with mirroring and caching.',
+  dl:[['ODF needs','Core 1 CPU / 4 GiB, DB 0.5 CPU / 4 GiB, endpoint 1 CPU / 2 GiB (autoscales 1–2)'],['Disks','A small PV for the NooBaa database'],['Best for','Hybrid-cloud object access, data federation']],
+  z:[['openshift',[N('any worker',['noobaa-core','noobaa-db','endpoint'])]]],ext:'Backing stores · AWS S3 · Azure Blob · GCS · IBM COS · any S3'}
+];
+const tabs=$('modetabs');
+MODES.forEach((m,i)=>{const b=document.createElement('button');b.type='button';b.role='tab';b.id='tab-'+m.id;b.textContent=m.t;b.setAttribute('aria-controls','modepanel');b.onclick=()=>showMode(i);tabs.appendChild(b)});
+function showMode(i){
+  const m=MODES[i];
+  [...tabs.children].forEach((b,k)=>b.setAttribute('aria-selected',k===i));
+  $('m-h').textContent=m.h;$('m-p').textContent=m.p;
+  $('m-dl').innerHTML=m.dl.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+  let n=0;
+  const row='<div class="zrow">'+m.z.map(([zl,nodes])=>`<div class="z"><span class="zl">${zl}</span>${nodes.map(nd=>`<div class="node pop" style="animation-delay:${(n++)*80}ms"><b>${nd.name}</b><div class="tags">${nd.tags.map(t=>`<span class="tag ${/osd/.test(t)?'osd':/mon|control/.test(t)?'ctl':''}">${t}</span>`).join('')}</div></div>`).join('')}</div>`).join('')+'</div>';
+  $('m-topo').innerHTML=row+(m.ext?`<div class="ext">↔ ${m.ext}</div>`:'');
+}
+showMode(0);
+
+/* ---------- calculator ---------- */
+const PROF={lean:[24,72],balanced:[30,72],performance:[45,96]};
+const NOTE={lean:'Lean is for clusters short on resources. The planning guide recommends converting to a standard deployment before adding device sets.',balanced:'Balanced is the default profile. Lean suits clusters short on resources; Performance trades more CPU and memory for throughput.',performance:'Performance gives Ceph the most CPU and memory. Check that your nodes have it free, since a profile larger than the cluster can supply makes the install fail.'};
+let prof='balanced', dsz=2;
+function seg(gid,attr,cb){document.querySelectorAll('#'+gid+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+gid+' button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset[attr]);calc()})}
+seg('prof','p',v=>prof=v);seg('dsize','d',v=>dsz=+v);
+$('sets').oninput=calc;$('nfs').onchange=calc;
+const fmt=v=>(Math.round(v*10)/10).toString();
+function tween(id,to){const e=$(id);const from=+e.dataset.v||0;e.dataset.v=to;if(reduce){e.textContent=fmt(to);return}const s=performance.now();(function f(n){const k=Math.min(1,(n-s)/500);e.textContent=fmt(from+(to-from)*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f)})(s)}
+function calc(){
+  const sets=+$('sets').value;$('sets-o').textContent=sets;
+  let [cpu,mem]=PROF[prof];cpu+=sets*6;mem+=sets*15;if($('nfs').checked){cpu+=3;mem+=8}
+  const dev=3+sets*3;
+  tween('o-cpu',cpu);tween('o-mem',mem);tween('o-dev',dev);
+  $('o-per').textContent=`About ${fmt(cpu/3)} CPUs and ${fmt(mem/3)} GiB per storage node across 3 nodes, one per failure domain. Add ${dev/3} disk${dev/3>1?'s':''} of ${dsz} TiB to each node.`;
+  const raw=dev*dsz,use=raw/3,safe=use*.75;
+  $('b-use').style.width='33.33%';$('b-safe').style.width='25%';$('b-mark').style.left='calc(28.33% - 1px)';
+  $('l-raw').textContent=`Raw ${fmt(raw)} TiB`;$('l-use').textContent=`Usable ${fmt(use)} TiB`;$('l-safe').textContent=`Plan to fill ${fmt(safe)} TiB`;
+  $('calc-note').textContent=NOTE[prof]+(sets>0&&prof==='lean'?' You have device sets selected, so plan on the standard profile.':'');
+}
+$('b-mark').title='85% read-only threshold';
+calc();
+
+/* ---------- checklist ---------- */
+const CK=[
+ ['OpenShift and ODF versions match','ODF 4.18 runs on OpenShift 4.18 and later minor versions.'],
+ ['3+ storage nodes in 3 failure domains','Zones or racks. Grow in multiples of three.'],
+ ['Nodes labelled for storage','cluster.ocs.openshift.io/openshift-storage=""'],
+ ['CPU and memory free for the chosen profile','Lean 24/72, Balanced 30/72, Performance 45/96 (CPU/GiB).'],
+ ['Disks ready','Flash (SSD/NVMe) of the same size on every node, raw with no partitions. In the cloud, a storage class such as gp3-csi.'],
+ ['Local Storage Operator installed (bare metal)','Needed for internal-attached and compact modes.'],
+ ['Network sized for replication','Every write crosses zones three times. Multus can separate Ceph public and cluster traffic.'],
+ ['Subscription covers the features you need','ODF Advanced for external mode, stretch clusters, Regional/Metro DR and KMS-backed encryption.'],
+ ['Encryption decided before install','Cluster-wide encryption is chosen in the wizard. Pick a KMS (Vault, Thales) now if you need one.'],
+ ['Capacity plan stays below 75%','Near-full alert at 75%, read-only at 85%. Usable = raw ÷ 3.'],
+ ['DR topology planned','Regional-DR needs RHACM and async mirroring; Metro-DR needs low latency to an external stretched Ceph.'],
+ ['Disconnected mirror ready (if air-gapped)','Mirror the ODF, LSO and dependent operator images to your registry.']
+];
+let saved={};try{saved=JSON.parse(localStorage.getItem('odf-check')||'{}')}catch(e){}
+const ck=$('check');
+CK.forEach(([b,s],i)=>{const l=document.createElement('label');l.htmlFor='ck'+i;l.innerHTML=`<input type="checkbox" id="ck${i}"${saved[i]?' checked':''}><span><b>${b}</b><small>${s}</small></span>`;ck.appendChild(l)});
+function tally(){const n=ck.querySelectorAll('input:checked').length;$('tally').textContent=`${n} of ${CK.length} confirmed`}
+ck.addEventListener('change',()=>{const o={};ck.querySelectorAll('input').forEach((c,i)=>{if(c.checked)o[i]=1});try{localStorage.setItem('odf-check',JSON.stringify(o))}catch(e){}tally()});
+tally();
+})();
+</script>
+
+</html>
