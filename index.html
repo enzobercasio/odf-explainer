@@ -49,6 +49,8 @@ button{font:inherit;cursor:pointer}
 .hero h1 span{color:var(--cobalt)}
 .facts{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--f-mono);font-size:.82rem;color:var(--muted)}
 .facts b{color:var(--ink);font-weight:500}
+.new{font-size:.92rem;color:var(--muted);border-left:3px solid var(--cobalt);padding-left:12px}
+.new b{color:var(--ink)}
 
 /* stage */
 .stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -185,10 +187,11 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
 <div class="wrap">
 
 <header class="hero">
-  <div class="eyebrow">Red Hat OpenShift Data Foundation · ODF 4.18</div>
+  <div class="eyebrow">Red Hat OpenShift Data Foundation · ODF 4.22</div>
   <h1>One storage layer for <span>block, file and object</span>, running inside OpenShift.</h1>
   <p class="lede">ODF packages Ceph, Rook and the Multicloud Object Gateway as operators. Your apps ask for storage with an ordinary PVC or bucket claim. Ceph stores three copies of every write, each in a different failure domain.</p>
   <div class="facts"><span><b>Ceph</b> distributed storage</span><span><b>Rook</b> operator</span><span><b>NooBaa</b> object gateway</span><span><b>Ceph-CSI</b> drivers</span><span><b>3×</b> replication by default</span></div>
+  <p class="new"><b>New in 4.22:</b> ODF on two-node bare-metal clusters with fencing, erasure-coded pools in internal mode, S3 vector buckets in MCG for AI embeddings, bucket quotas, and centrally managed TLS profiles.</p>
 </header>
 
 <section aria-labelledby="h-flow">
@@ -288,7 +291,7 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
   <div class="head">
     <div class="eyebrow">Requirements</div>
     <h2 id="h-req">Size your internal-mode cluster</h2>
-    <p>These figures are what ODF's own services need, taken from the ODF 4.18 planning guide. OpenShift and your workloads need their own capacity on top of this.</p>
+    <p>These figures are what ODF's own services need, taken from the ODF 4.22 planning guide. OpenShift and your workloads need their own capacity on top of this.</p>
   </div>
   <div class="calc">
     <div class="in">
@@ -304,12 +307,15 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
       </div>
       <div class="field"><span class="fl">Disk size per OSD</span>
         <div class="seg" role="group" aria-label="Disk size" id="dsize">
-          <button type="button" id="d-05" data-d="0.5" aria-pressed="false">0.5 TiB</button>
-          <button type="button" id="d-2" data-d="2" aria-pressed="true">2 TiB</button>
-          <button type="button" id="d-4" data-d="4" aria-pressed="false">4 TiB</button>
+          <button type="button" id="d-05" data-d="0.5" aria-pressed="false">0.5</button>
+          <button type="button" id="d-1" data-d="1" aria-pressed="false">1</button>
+          <button type="button" id="d-2" data-d="2" aria-pressed="true">2</button>
+          <button type="button" id="d-4" data-d="4" aria-pressed="false">4</button>
+          <button type="button" id="d-8" data-d="8" aria-pressed="false">8 TiB</button>
         </div>
+        <span class="pernode">Sizes the wizard offers for cloud and vSphere disks. Local disks can be up to 16 TiB.</span>
       </div>
-      <label class="chk" for="nfs"><input type="checkbox" id="nfs"> Enable the NFS service (+3 CPU, +8 GiB)</label>
+      <label class="chk" for="nfs"><input type="checkbox" id="nfs"> Enable the NFS service (+6 CPU, +16 GiB)</label>
       <p class="note" id="calc-note">Balanced is the default profile. Lean suits clusters short on resources; Performance trades more CPU and memory for throughput.</p>
     </div>
     <div class="out">
@@ -323,7 +329,7 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
         <div class="eyebrow">Capacity with 3× replication</div>
         <div class="bar" aria-hidden="true"><i class="raw"></i><i class="usable" id="b-use"></i><i class="safe" id="b-safe"></i><span class="mark" id="b-mark"></span></div>
         <div class="legend"><span style="--c:var(--line)" id="l-raw">Raw 6 TiB</span><span style="--c:var(--cobalt)" id="l-use">Usable 2 TiB</span><span style="--c:var(--ok)" id="l-safe">Plan to fill 1.5 TiB</span></div>
-        <p class="pernode">Usable space is raw ÷ 3. ODF raises a near-full alert at 75% and makes the cluster read-only at 85%, so plan around the green figure.</p>
+        <p class="pernode">Usable space is raw ÷ 3 with the default replica-3 pools. ODF raises a near-full alert at 75%. At 85% it raises a full alert, and you can no longer free space with standard commands. Plan around the green figure.</p>
       </div>
     </div>
   </div>
@@ -338,8 +344,10 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
         <tr><td>Performance profile</td><td class="mono">45</td><td class="mono">96 GiB</td><td class="mono">3</td><td>Highest throughput</td></tr>
         <tr><td>Compact (3 bare-metal masters)</td><td class="mono">24</td><td class="mono">72 GiB</td><td class="mono">3</td><td>Extra device set: +6 CPU, +15 GiB</td></tr>
         <tr><td>External (RHCS elsewhere)</td><td class="mono">4</td><td class="mono">16 GiB</td><td class="n">n/a</td><td>Only clients and MCG run in OpenShift</td></tr>
-        <tr><td>MCG only</td><td class="mono">2.5</td><td class="mono">10 GiB</td><td class="n">n/a</td><td>Core 1/4 GiB · DB 0.5/4 GiB · endpoint 1/2 GiB</td></tr>
-        <tr><td>IBM Power · internal</td><td class="mono">48</td><td class="mono">192 GiB</td><td class="mono">3</td><td>16 CPU and 64 GB per node</td></tr>
+        <tr><td>MCG only</td><td class="mono">3</td><td class="mono">10 GiB</td><td class="n">n/a</td><td>Core 1/4 GiB · DB 1/4 GiB · endpoint 1/2 GiB (autoscales 1–2)</td></tr>
+        <tr><td>NFS service (optional)</td><td class="mono">+6</td><td class="mono">+16 GiB</td><td class="n">n/a</td><td>Disabled by default</td></tr>
+        <tr><td>IBM Power · internal</td><td class="mono">48</td><td class="mono">192 GiB</td><td class="mono">3</td><td>Each device needs an extra 500 GB disk. External: 24 CPU / 48 GiB</td></tr>
+        <tr><td>IBM Z / LinuxONE · internal</td><td class="mono">21</td><td class="mono">72 GiB</td><td class="mono">3</td><td>7 CPU per node plus 1–4 IFLs. Extra set: +3 CPU, +15 GiB</td></tr>
       </tbody>
     </table>
   </div>
@@ -348,10 +356,10 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
     <table>
       <thead><tr><th>Platform</th><th>Internal</th><th>External</th><th>Disks come from</th></tr></thead>
       <tbody>
-        <tr><td>Bare metal</td><td class="y">yes</td><td class="y">yes</td><td>Local SSD/NVMe via Local Storage Operator</td></tr>
-        <tr><td>VMware vSphere 7.0+ (8.0+ recommended)</td><td class="y">yes</td><td class="y">yes</td><td>vSAN/VMFS volumes, or VMDK/RDM/DirectPath via LSO</td></tr>
-        <tr><td>AWS</td><td class="y">yes</td><td class="n">no</td><td>EBS, <code>gp3-csi</code> recommended</td></tr>
-        <tr><td>Microsoft Azure</td><td class="y">yes</td><td class="n">no</td><td>azure-disk</td></tr>
+        <tr><td>Bare metal</td><td class="y">yes</td><td class="y">yes</td><td>Local SSD/NVMe via Local Storage Operator, at least 0.5 TiB per device in production</td></tr>
+        <tr><td>VMware vSphere (8.0+, VCF 9 or VVF 9 recommended)</td><td class="y">yes</td><td class="y">yes</td><td>vSAN/VMFS volumes, or VMDK/RDM/DirectPath via LSO</td></tr>
+        <tr><td>AWS</td><td class="y">yes</td><td class="n">no</td><td>EBS, <code>gp2-csi</code> or <code>gp3-csi</code> (recommended)</td></tr>
+        <tr><td>Microsoft Azure</td><td class="y">yes</td><td class="n">no</td><td>azure-disk. Performance Plus for disks of 513 GiB and larger</td></tr>
         <tr><td>Google Cloud</td><td class="y">yes</td><td class="n">no</td><td>gce-pd</td></tr>
         <tr><td>ROSA with hosted control planes</td><td class="y">yes</td><td class="n">no</td><td>EBS <code>gp3-csi</code></td></tr>
         <tr><td>IBM Power · IBM Z / LinuxONE</td><td class="y">yes</td><td class="y">yes</td><td>Local SSD via LSO</td></tr>
@@ -366,14 +374,14 @@ td.y{color:var(--ok);font-family:var(--f-mono)} td.n{color:var(--muted);font-fam
     <div class="eyebrow">Before you install</div>
     <h2 id="h-pre">Pre-flight checklist</h2>
     <p>Tick items off as you confirm them. Your ticks stay in this browser only.</p>
-    <span class="tally" id="tally">0 of 12 confirmed</span>
+    <span class="tally" id="tally">0 of 13 confirmed</span>
   </div>
   <div class="check" id="check"></div>
 </section>
 
 <footer class="src">
   <div class="eyebrow">Sources</div>
-  <p>Figures from the Red Hat OpenShift Data Foundation 4.18 <a href="https://docs.redhat.com/ko/documentation/red_hat_openshift_data_foundation/4.18/html/planning_your_deployment/resource-requirements_rhodf" target="_blank" rel="noopener">resource requirements</a> and <a href="https://docs.redhat.com/ko/documentation/red_hat_openshift_data_foundation/4.18/html/planning_your_deployment/infrastructure-requirements_rhodf" target="_blank" rel="noopener">infrastructure requirements</a> pages. Requirements change between releases, so check the planning guide for your exact ODF version, and use the Red Hat ODF Sizing Tool for production designs.</p>
+  <p>Figures from the Red Hat OpenShift Data Foundation 4.22 <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.22/html-single/planning_your_deployment/index" target="_blank" rel="noopener">planning guide</a>, <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.22/html-single/4.22_release_notes/index" target="_blank" rel="noopener">release notes</a> and <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.22/html-single/deploying_openshift_data_foundation_on_two-node_clusters/index" target="_blank" rel="noopener">two-node deployment guide</a>. Requirements change between releases, so check the planning guide for your exact ODF version, and use the Red Hat ODF Sizing Tool for production designs.</p>
 </footer>
 </div>
 
@@ -527,13 +535,16 @@ const MODES=[
   dl:[['Nodes','Exactly 3 bare-metal masters that also schedule workloads'],['ODF needs','24 CPU / 72 GiB, plus 6 CPU / 15 GiB per extra device set'],['Disks','Local, via LSO'],['Watch','Control plane, apps and storage share the same CPU']],
   z:[['node-1',[N('master-1',['control plane','mon','osd'])]],['node-2',[N('master-2',['control plane','mon','osd'])]],['node-3',[N('master-3',['control plane','mon','osd'])]]]},
  {id:'external',t:'External',h:'External Red Hat Ceph Storage',p:'An existing Red Hat Ceph Storage cluster outside OpenShift holds the data. ODF installs only the CSI drivers and MCG and connects with a script-generated JSON file.',
-  dl:[['ODF needs','4 CPU / 16 GiB in OpenShift'],['You need','A supported RHCS cluster and network access to its MONs, OSDs and RGW'],['Subscription','ODF Advanced'],['Best for','Large shared Ceph clusters, many OpenShift clusters on one Ceph']],
+  dl:[['ODF needs','4 CPU / 16 GiB in OpenShift'],['You need','A RHCS version listed in the ODF Supportability and Interoperability Checker, with network access to its MONs, OSDs and RGW'],['Also','IBM FlashSystem can be the external backend'],['Note','Metro-DR for external mode is deprecated in 4.22'],['Best for','Large shared Ceph clusters, many OpenShift clusters on one Ceph']],
   z:[['openshift',[N('any worker',['csi plugins','noobaa'])]]],ext:'Red Hat Ceph Storage cluster (outside OpenShift) · MON · OSD · RGW · MDS'},
  {id:'stretch',t:'Stretch / arbiter',h:'Stretch cluster with an arbiter',p:'One OpenShift cluster spans two data centres, with a tie-breaker monitor in a third location. Data is written synchronously to both sites, so either site can fail without data loss.',
-  dl:[['Nodes','At least 4 storage nodes (2 per data zone) plus an arbiter zone with a master'],['Replication','4 copies, 2 in each data zone'],['Latency','Low latency between data zones (about 10 ms RTT or less); the arbiter can be farther away'],['Subscription','ODF Advanced']],
+  dl:[['Nodes','At least 5 across 3 zones: 2 per data zone plus 1 arbiter node, which can be a master'],['Replication','4 copies, 2 in each data zone'],['Latency','10 ms RTT or less between data zones. The arbiter follows the etcd latency limits'],['Before install','Label every node with its zone']],
   z:[['data-zone-1',[N('worker-1',['mon','osd']),N('worker-2',['mon','osd'])]],['arbiter',[N('master-3',['mon (arbiter)'])]],['data-zone-2',[N('worker-3',['mon','osd']),N('worker-4',['mon','osd'])]]]},
+ {id:'twonode',t:'Two-node',h:'Two-node cluster with fencing',p:'New in 4.22. Two bare-metal nodes run OpenShift and Ceph for edge and remote sites. Fencing protects against split brain, and a DRBD-backed floating monitor keeps quorum when one node fails.',
+  dl:[['Nodes','Exactly 2 bare-metal nodes, control-plane topology DualReplica'],['Disks','SSD OSD disks of at least 500 GB, same size on both nodes, plus a 10–50 GB SSD for the DRBD monitor'],['Storage','RBD and CephFS, RWO and RWX'],['Not included','MCG, RGW, NFS, Regional/Metro-DR, Multus, performance profiles, erasure coding']],
+  z:[['node-1',[N('master-1',['control plane','mon','osd','drbd'])]],['node-2',[N('master-2',['control plane','mon','osd','drbd'])]]]},
  {id:'mcg',t:'MCG only',h:'Multicloud Object Gateway only',p:'Deploy just the object gateway, with no Ceph. Buckets live in AWS, Azure, GCS or any S3 store, behind one S3 endpoint with mirroring and caching.',
-  dl:[['ODF needs','Core 1 CPU / 4 GiB, DB 0.5 CPU / 4 GiB, endpoint 1 CPU / 2 GiB (autoscales 1–2)'],['Disks','A small PV for the NooBaa database'],['Best for','Hybrid-cloud object access, data federation']],
+  dl:[['ODF needs','Core 1 CPU / 4 GiB, DB 1 CPU / 4 GiB, endpoint 1 CPU / 2 GiB (autoscales 1–2)'],['Disks','A small PV for the NooBaa database'],['New in 4.22','S3 vector buckets for AI embeddings, and quotas on buckets and claims'],['Best for','Hybrid-cloud object access, data federation']],
   z:[['openshift',[N('any worker',['noobaa-core','noobaa-db','endpoint'])]]],ext:'Backing stores · AWS S3 · Azure Blob · GCS · IBM COS · any S3'}
 ];
 const tabs=$('modetabs');
@@ -560,7 +571,7 @@ const fmt=v=>(Math.round(v*10)/10).toString();
 function tween(id,to){const e=$(id);const from=+e.dataset.v||0;e.dataset.v=to;if(reduce){e.textContent=fmt(to);return}const s=performance.now();(function f(n){const k=Math.min(1,(n-s)/500);e.textContent=fmt(from+(to-from)*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f)})(s)}
 function calc(){
   const sets=+$('sets').value;$('sets-o').textContent=sets;
-  let [cpu,mem]=PROF[prof];cpu+=sets*6;mem+=sets*15;if($('nfs').checked){cpu+=3;mem+=8}
+  let [cpu,mem]=PROF[prof];cpu+=sets*6;mem+=sets*15;if($('nfs').checked){cpu+=6;mem+=16}
   const dev=3+sets*3;
   tween('o-cpu',cpu);tween('o-mem',mem);tween('o-dev',dev);
   $('o-per').textContent=`About ${fmt(cpu/3)} CPUs and ${fmt(mem/3)} GiB per storage node across 3 nodes, one per failure domain. Add ${dev/3} disk${dev/3>1?'s':''} of ${dsz} TiB to each node.`;
@@ -574,24 +585,25 @@ calc();
 
 /* ---------- checklist ---------- */
 const CK=[
- ['OpenShift and ODF versions match','ODF 4.18 runs on OpenShift 4.18 and later minor versions.'],
- ['3+ storage nodes in 3 failure domains','Zones or racks. Grow in multiples of three.'],
+ ['OpenShift and ODF versions match','ODF 4.22 runs on OpenShift 4.22 and later minor versions.'],
+ ['Upgrade path checked','Coming from 4.21.z, go to 4.22.2 or later. Upgrades to 4.22.0 and 4.22.1 fail.'],
+ ['3+ storage nodes in 3 failure domains','Zones or racks. Grow in multiples of three. Two-node clusters are the exception.'],
  ['Nodes labelled for storage','cluster.ocs.openshift.io/openshift-storage=""'],
  ['CPU and memory free for the chosen profile','Lean 24/72, Balanced 30/72, Performance 45/96 (CPU/GiB).'],
- ['Disks ready','Flash (SSD/NVMe) of the same size on every node, raw with no partitions. In the cloud, a storage class such as gp3-csi.'],
+ ['Disks ready','Flash of the same size and type, no partitions, a separate OS disk, 12 or fewer per node. Cloud: 0.5–8 TiB. Local: up to 16 TiB.'],
  ['Local Storage Operator installed (bare metal)','Needed for internal-attached and compact modes.'],
- ['Network sized for replication','Every write crosses zones three times. Multus can separate Ceph public and cluster traffic.'],
- ['Subscription covers the features you need','ODF Advanced for external mode, stretch clusters, Regional/Metro DR and KMS-backed encryption.'],
+ ['Network sized for replication','At least one 10 GbE interface. Multus can separate Ceph traffic on bare metal, but not with Regional-DR.'],
+ ['Subscription covers the features you need','1:1 core match with OpenShift. ODF Advanced for KMS and storage-class encryption. Advanced plus RHACM for DR.'],
  ['Encryption decided before install','Cluster-wide encryption is chosen in the wizard. Pick a KMS (Vault, Thales) now if you need one.'],
- ['Capacity plan stays below 75%','Near-full alert at 75%, read-only at 85%. Usable = raw ÷ 3.'],
- ['DR topology planned','Regional-DR needs RHACM and async mirroring; Metro-DR needs low latency to an external stretched Ceph.'],
- ['Disconnected mirror ready (if air-gapped)','Mirror the ODF, LSO and dependent operator images to your registry.']
+ ['Erasure coding decided before install','RGW erasure coding can only be set at cluster creation. RBD and CephFS can add it later.'],
+ ['Capacity plan stays below 75%','Near-full alert at 75%, full alert at 85%. Usable = raw ÷ 3.'],
+ ['DR topology planned','Regional-DR uses RHACM and async mirroring. Metro-DR needs low latency. Don\'t use minimal deployments for DR.']
 ];
-let saved={};try{saved=JSON.parse(localStorage.getItem('odf-check')||'{}')}catch(e){}
+let saved={};try{saved=JSON.parse(localStorage.getItem('odf-check-422')||'{}')}catch(e){}
 const ck=$('check');
 CK.forEach(([b,s],i)=>{const l=document.createElement('label');l.htmlFor='ck'+i;l.innerHTML=`<input type="checkbox" id="ck${i}"${saved[i]?' checked':''}><span><b>${b}</b><small>${s}</small></span>`;ck.appendChild(l)});
 function tally(){const n=ck.querySelectorAll('input:checked').length;$('tally').textContent=`${n} of ${CK.length} confirmed`}
-ck.addEventListener('change',()=>{const o={};ck.querySelectorAll('input').forEach((c,i)=>{if(c.checked)o[i]=1});try{localStorage.setItem('odf-check',JSON.stringify(o))}catch(e){}tally()});
+ck.addEventListener('change',()=>{const o={};ck.querySelectorAll('input').forEach((c,i)=>{if(c.checked)o[i]=1});try{localStorage.setItem('odf-check-422',JSON.stringify(o))}catch(e){}tally()});
 tally();
 })();
 </script>
